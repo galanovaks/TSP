@@ -5,11 +5,13 @@ double **create_list(int n,FILE *f)
     list=malloc(n*sizeof(double*));
     for (i=0;i<n;i++)
     {
-        list[i]=malloc(6*sizeof(double));
+        list[i]=malloc(8*sizeof(double));
         fscanf(f,"%lf %lf",&list[i][0],&list[i][1]);
         list[i][3]=-1;
         list[i][4]=0;
         list[i][5]=-1;
+        list[i][6]=-1;
+        list[i][7]=-1;
     }
     return list;
 }
@@ -32,25 +34,6 @@ void delete_n(int **note,int n)
     free(aux);
 }
 
-/*int **create_graph(int n)
-{
-    int **graph;
-    int i,j;
-    graph=malloc(n*sizeof(int*));
-    for (i=0;i<n;i++)
-    {
-        graph[i]=malloc(n*sizeof(int));
-        graph[i][i]=-1;
-    }
-    for (i=0;i<n-1;i++)
-        for (j=i+1;j<n;j++)
-    {
-        graph[i][j]=0;
-        graph[j][i]=graph[i][j];
-    }
-    return graph;
-}
-*/
 double distance(double **l,int i,int j)
 {
     return sqrt(pow(l[j][0]-l[i][0],2)+pow(l[j][1]-l[i][1],2));
@@ -58,28 +41,33 @@ double distance(double **l,int i,int j)
 
 void max_count(int **note,double **l,int n,int c)
 {
-    double d,dist=-1,dm=-1;
+    double d,dist=0,dm=-1,p7=-1;
     int i;
+    if (l[c][4]==2)
+        return;
     for (i=0;i<n;i++)
         if ((i!=c)&&(l[i][4]!=2)&&(note[c][0]!=i))
         {
             d=distance(l,c,i);
-            if (dist<d)
-                dist=d;
-            if ((dm==-1)||(d<dm))
+            dist+=d;
+            if ((dm==-1)||(d>dm))
+            {
                 dm=d;
+                p7=i;
+            }
         }
     l[c][3]=dist;
     l[c][5]=dm;
+    l[c][7]=p7;
 }
 
-int search_start(double **l,int n)
+int search_start(double **l,int n,int var)
 {
     int i,res=-2;
     double dist=-1;
-    for (i=0;i<n;i++)
+    for (i=n-1;i>=0;i--)
     {   
-        if (l[i][4]==2)
+        if ((l[i][4]==2)||((var==0)&&(l[i][4]==1)))
             continue;
         if ((dist<l[i][3])||((dist==l[i][3])
         &&(l[res][5]<l[i][5])))
@@ -134,7 +122,7 @@ int search_min(int **note,double **l,int n,int c,double *len)
         if ((i==c)||(l[i][4]==2)||(note[c][0]==i))
             continue;
         d=distance(l,c,i);
-        if (((dist==-1)||(dist>d))
+        if (((dist==-1)||(dist>d)||((dist==d)&&(l[i][3]>l[res][3])))
         &&(check_cycle(note,l,n,i,c)==0))
         {
             dist=d;
@@ -143,10 +131,6 @@ int search_min(int **note,double **l,int n,int c,double *len)
     }
     if (res!=-2)
     {
-        if ((l[res][3]==dist)||(l[res][5]==dist))
-            max_count(note,l,n,res);
-        if ((l[c][3]==dist)||(l[c][5]==dist))
-            max_count(note,l,n,c);
         *len+=dist;
         l[c][4]++;
         l[res][4]++;
@@ -158,6 +142,25 @@ int search_min(int **note,double **l,int n,int c,double *len)
             note[c][0]=res;
         else
             note[c][1]=res;
+        l[c][3]-=dist;
+        l[res][3]-=dist;
+        if (n<10000)
+        {
+            max_count(note,l,n,res);
+            max_count(note,l,n,c);
+        }
+        if ((l[c][4]==2)||(l[res][4]==2))
+            for (i=0;i<n;i++)
+            {
+                if (l[i][4]==2)
+                    continue;
+                if ((n<10000)&&((l[i][7]==c)||(l[i][7]==res)))
+                    max_count(note,l,n,i);
+                if  ((l[c][4]==2)&&(note[c][0]!=i)&&(note[c][1]!=i))
+                    l[i][3]-=distance(l,i,c);
+                if  ((l[res][4]==2)&&(note[res][0]!=i)&&(note[res][1]!=i))
+                    l[i][3]-=distance(l,i,res);
+            }
     }
     return res;
 }
@@ -174,12 +177,16 @@ void triangle(int **note,double **l,int i,int var,double *len)
 {
     int c1,c2,c3,var2;
     double r1,r2;
+    if (l[i][4]!=2)
+        return;
     if (var==0)
         var2=1;
     else
         var2=0;
     c1=note[i][var];
     c3=note[i][var2];
+    if (l[c1][4]!=2)
+        return;
     if (note[c1][0]==i)
         c2=note[c1][1];
     else
@@ -196,7 +203,8 @@ void triangle(int **note,double **l,int i,int var,double *len)
         swipe(note,c2,c1,i);
     }
 }
-void optimization(int **note,double **l,int n,double *len,int i)
+
+void optimization1(int **note,double **l,int n,double *len,int i)
 {
     int j,r1,r2,r3,r4,res=0;
     double R1,R2;
@@ -227,8 +235,8 @@ void optimization(int **note,double **l,int n,double *len,int i)
                 swipe(note,r1,i,j);
                 swipe(note,r2,j,i);
                 res++;
-//                if (var2==0)
-//                    return res;
+                if (n<10000)
+                    optimization1(note,l,n,len,i);
             }
         }
         else
@@ -258,8 +266,77 @@ void optimization(int **note,double **l,int n,double *len,int i)
                 if ((note[r4][0]!=i)&&(note[r4][1]!=i))
                     swipe(note,r4,j,i);
                 res++;
-//                if (var2==0)
-//                    return res;
+                if (n<10000)
+                    optimization1(note,l,n,len,i);
+            }
+        }
+    }
+}
+
+void optimization(int **note,double **l,int n,double *len,int i)
+{
+    int j,r1,r2,r3,r4,res=0;
+    double R1,R2;
+    if (l[i][4]!=2)
+        return;
+    for (j=n-1;j>=0;j--)
+    {
+        if ((note[j][1]==-1)||(i==j))
+            continue;
+        if ((note[i][0]==j)||(note[i][1]==j))
+        {
+            if (note[i][0]==j)
+                r1=note[i][1];
+            else
+                r1=note[i][0];
+            if (note[j][0]==i)
+                r2=note[j][1];
+            else
+                r2=note[j][0];
+            R1=distance(l,i,r1)+distance(l,j,r2);
+            R2=distance(l,i,r2)+distance(l,j,r1);
+            if (R2==R1)
+            {
+                *len+=R2;
+                *len-=R1;
+                swipe(note,i,r1,r2);
+                swipe(note,j,r2,r1);
+                swipe(note,r1,i,j);
+                swipe(note,r2,j,i);
+                res++;
+                if (n<10000)
+                    optimization1(note,l,n,len,j);
+            }
+        }
+        else
+        {
+            r1=note[i][0];
+            r2=note[i][1];
+            r3=note[j][0];
+            r4=note[j][1];
+            R1=distance(l,i,r3)+distance(l,i,r4)
+            +distance(l,j,r1)+distance(l,j,r2);
+            R2=distance(l,i,r1)+distance(l,i,r2)
+            +distance(l,j,r3)+distance(l,j,r4);
+            if (R2==R1)
+            {
+                *len+=R1;
+                *len-=R2;
+                swipe(note,i,r1,r3);
+                swipe(note,i,r2,r4);
+                swipe(note,j,r3,r1);
+                swipe(note,j,r4,r2);
+                if ((note[r1][0]!=j)&&(note[r1][1]!=j))
+                    swipe(note,r1,i,j);
+                if ((note[r2][0]!=j)&&(note[r2][1]!=j))
+                    swipe(note,r2,i,j);
+                if ((note[r3][0]!=i)&&(note[r3][1]!=i))
+                    swipe(note,r3,j,i);
+                if ((note[r4][0]!=i)&&(note[r4][1]!=i))
+                    swipe(note,r4,j,i);
+                res++;
+                if (n<10000)
+                    optimization1(note,l,n,len,j);
             }
         }
     }
@@ -280,13 +357,23 @@ void solution(double **l,int n)
     }
     for (i=0;i<n;i++)
         max_count(note,l,n,i);
-    c=search_start(l,n);
+    i=0;
+    c=search_start(l,n,i);
+
     while ((c!=-2)&&((fin=search_min(note,l,n,c,len))!=-2))
     {
-//        printf("%d\n",c);
-        optimization(note,l,n,len,c);
-        optimization(note,l,n,len,fin);
-        c=search_start(l,n);
+        optimization1(note,l,n,len,c);
+        optimization1(note,l,n,len,fin);
+        triangle(note,l,c,0,len);
+        triangle(note,l,c,1,len);
+        triangle(note,l,fin,0,len);
+        triangle(note,l,fin,1,len);
+        c=search_start(l,n,i);
+        if (c==-2)
+        {
+            i++;
+            c=search_start(l,n,i);
+        }
     }
     c=-1;
     j=-1;
@@ -308,26 +395,35 @@ void solution(double **l,int n)
     l[j][4]++;
     note[c][1]=j;
     note[j][1]=c;
-    optimization(note,l,n,len,c);
-    optimization(note,l,n,len,j);
-//    for (fin=0;fin<2;fin++)
-/*        for (i=0;i<n;i++)
+    optimization1(note,l,n,len,c);
+    optimization1(note,l,n,len,j);
+    if (n<4000)
+    {
+        for (fin=0;fin<2;fin++)
+            for (i=0;i<n;i++)
+            {
+                optimization1(note,l,n,len,i);
+                triangle(note,l,i,0,len);
+                triangle(note,l,i,1,len);
+                optimization(note,l,n,len,i);
+            }
+        for (i=n-1;i>=0;i--)
         {
+            optimization1(note,l,n,len,i);
             triangle(note,l,i,0,len);
             triangle(note,l,i,1,len);
             optimization(note,l,n,len,i);
-        }*/
-    l[c][4]--;
-    l[j][4]--;
+        }
+    }
     printf("%.3lf\n",*len);
-    if (check_cycle(note,l,n,c,j)!=1)
+/*    if (check_cycle(note,l,n,c,j)!=1)
         printf ("FATAL ERROR\n");
-    else
-        printf("OK\n");
+//    else
+//        printf("OK\n");
     l[c][4]++;
     l[j][4]++;
     note[c][1]=j;
-    note[j][1]=c;
+    note[j][1]=c;*/
 //    for (i=0;i<n;i++)
 //    {
 //        printf("%d-%d,%d\n ",i,note[i][0],note[i][1]);
