@@ -357,29 +357,33 @@ void solution(double **l,int n)
     }
     for (i=0;i<n;i++)
         max_count(note,l,n,i);
-    i=0;
+    i=1;
     c=search_start(l,n,i);
-
     while ((c!=-2)&&((fin=search_min(note,l,n,c,len))!=-2))
     {
         optimization1(note,l,n,len,c);
         optimization1(note,l,n,len,fin);
-        triangle(note,l,c,0,len);
+/*        triangle(note,l,c,0,len);
         triangle(note,l,c,1,len);
         triangle(note,l,fin,0,len);
         triangle(note,l,fin,1,len);
+        fin=search_min(note,l,n,c,len);*/
         c=search_start(l,n,i);
         if (c==-2)
         {
+//            for (i=0;i<n;i++)
+//                printf("%d-%d,%d\n ",i,note[i][0],note[i][1]);
             i++;
             c=search_start(l,n,i);
         }
     }
+//    for (i=0;i<n;i++)
+//        printf("%d-%d,%d\n ",i,note[i][0],note[i][1]);
     c=-1;
     j=-1;
     for (i=0;i<n;i++)
     {
-        if (l[i][4]==1)
+        if (note[i][1]==-1)
         {
             if (c==-1)
                 c=i;
@@ -416,6 +420,26 @@ void solution(double **l,int n)
         }
     }
     printf("%.3lf\n",*len);
+    c=0;
+    fin=note[0][1];
+    printf("%d ",c);
+    i=1;
+    while (i!=n)
+    {
+        if (note[fin][1]==c)
+        {
+            c=fin;
+            fin=note[fin][0];
+        }
+        else
+        {
+            c=fin;
+            fin=note[fin][1];
+        }
+        printf("%d ",c);
+        i++;
+    }
+    printf("%d\n",fin);
 /*    if (check_cycle(note,l,n,c,j)!=1)
         printf ("FATAL ERROR\n");
 //    else
